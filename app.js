@@ -6,7 +6,7 @@ const Review = require('./models/review');
 const methodOverride = require('method-override');
 const catchAsync =require('./utils/catchAsync');
 const ExpressError = require('./utils/ExpressError');
-const {campgroundSchema} = require('./schema')
+const {campgroundSchema, reviewSchema} = require('./schema')
 const ejsMate = require('ejs-mate');
 const { request } = require('express');
 
@@ -39,6 +39,17 @@ const validateCampground = (req, res, next) => {
   }
 }
 
+const validateReview = (req, res, next) =>{
+  const {error} = reviewSchema.validate(req.body);
+  if(error){
+    const message = error.details.map(e => e.message).join(',');
+    throw new ExpressError(message, 400);
+  }
+  else {
+    next();
+  }
+}
+
 app.get('/', (req, res) => {
   res.render('home');
 })
@@ -49,7 +60,6 @@ app.get('/campgrounds', async (req, res) => {
 })
 
 app.post('/campgrounds/', validateCampground, catchAsync(async(req,res, next) => {
-  
     const campground = new Campground(req.body.campground);
     await campground.save();
     res.redirect(`campgrounds/${campground._id}`);
@@ -60,7 +70,7 @@ app.get('/campgrounds/new', (req,res) => {
 })
 
 app.get('/campgrounds/:id', catchAsync(async (req, res) => {
-  const campground = await Campground.findById(req.params.id)
+  const campground = await Campground.findById(req.params.id).populate('reviews')
   res.render('campgrounds/show', {campground})
 }))
 
@@ -81,7 +91,15 @@ app.delete('/campgrounds/:id', catchAsync(async(req, res) =>{
   res.redirect('/campgrounds');
 }))
 
-app.post('/campgrounds/:id/reviews', catchAsync(async (req, res) => {
+app.delete('/campgrounds/:id/reviews/:reviewId', catchAsync(async(req,res)=>{
+  const {id, reviewId} = req.params;
+  const campground = await Campground.findByIdAndUpdate(id, {$pull:{reviews:reviewId}});
+  const review = await Review.findByIdAndDelete(reviewId);
+  res.redirect(`/campgrounds/${id}`);
+
+}))
+
+app.post('/campgrounds/:id/reviews', validateReview ,catchAsync(async (req, res) => {
   const campground = await Campground.findById(req.params.id);
   const review = new Review(req.body.review);
   campground.reviews.push(review);
@@ -99,7 +117,6 @@ app.use((err, req, res, next) => {
   if(!err.message) err.message = 'Oh no, something went wrong'
   res.status(statusCode).render('error', {err});
 })
-
 
 app.listen(5000, () =>{
   console.log("serving on port 5000");
