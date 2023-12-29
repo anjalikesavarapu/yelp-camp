@@ -33,7 +33,7 @@ module.exports.validateCampground = (req, res, next) => {
 module.exports.isAuthor = async(req, res, next) => {
   const {id} = req.params;
   const campground  = await Campground.findById(id);
-  if(!campground.author.equals(req.user._id)) {
+  if(!campground.author === req.user._id) {
     req.flash('error', 'You dont have permission to update the campground');
     return res.redirect(`/campgrounds/${id}`);
   }
