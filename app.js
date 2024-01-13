@@ -22,9 +22,9 @@ const passportStrategy = require('passport-local');
 const User = require('./models/user');
 const MongoStore = require('connect-mongo');
 
-//const dbUrl = process.env.DB_URL
+const dbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
 
-mongoose.connect('mongodb://localhost:27017/yelp-camp', {
+mongoose.connect(dbUrl, {
   useNewUrlParser : true,
   useUnifiedTopology:true
 })
@@ -46,12 +46,13 @@ app.use(express.urlencoded({extended:true}));
 app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname,'public')));
 
+const secret = process.env.SECRET || 'thisshouldbeabettersecret';
 
 const store = MongoStore.create({
-  mongoUrl:'mongodb://localhost:27017/yelp-camp',
+  mongoUrl:dbUrl,
   touchAfter: 24 * 3600,
   crypto:{
-    secret:'thisshouldbeabettersecret',
+    secret,
   }
 });
 store.on('error', function(e) {
@@ -62,7 +63,7 @@ store.on('error', function(e) {
 const sessionConfig = {
   store,
   name:'session',
-  secret:'thisshouldbeabettersecret',
+  secret,
   resave:false,
   saveUninitialized:true,
   cookie:{
